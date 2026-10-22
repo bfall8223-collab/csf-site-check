@@ -116,7 +116,8 @@ async function checkUrl(browser, url) {
     await m.waitForTimeout(1500);
     const mi = await m.evaluate(mobileInspect);
     result.problems.push(...mi.problems); Object.assign(result.info, mi.info);
-    await checkMenu(m, result.problems);
+    // The home page uses its own Breakdance overview popup, checked by hand; skip it here.
+    if (url.replace(/\/$/, '') !== SITE.replace(/\/$/, '')) await checkMenu(m, result.problems);
     if (result.problems.length) result.mobileShot = await shot(m, 'mobile');
   } catch (e) { result.problems.push('Mobile load failed: ' + e.message.split('\n')[0]); }
   await mctx.close();
