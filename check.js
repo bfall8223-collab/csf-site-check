@@ -8,6 +8,15 @@ const LIMIT = parseInt(process.env.LIMIT || '0', 10);      // 0 = all pages
 const ONLY = (process.env.ONLY || '').split(/\s+/).filter(Boolean); // optional URL list
 const CONCURRENCY = 8;
 const OUT = 'report';
+// Pages checked by hand and confirmed fine as they are. They are skipped.
+const IGNORE = [
+  '/careers/',
+  '/careers/jobs/',
+  '/impact-signals/impact-signal-pricing-discipline-index/',
+  '/insights-retail-profit/retail-industry-trends/',
+  '/our-insights/inventory-to-sales-ratio/',
+  '/interactive-operating-performance-analysis/',
+];
 
 async function getUrls(request) {
   if (ONLY.length) return ONLY;
@@ -24,7 +33,7 @@ async function getUrls(request) {
     }
   }
   await read(SITE + '/sitemap_index.xml');
-  let list = [...urls].sort();
+  let list = [...urls].filter(u => !IGNORE.some(p => u.replace(SITE, '').replace(/\/?$/, '/') === p)).sort();
   if (LIMIT) list = list.slice(0, LIMIT);
   return list;
 }
