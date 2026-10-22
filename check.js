@@ -71,7 +71,10 @@ async function checkMenu(page, problems) {
     // The home page intentionally opens its own Breakdance overview popup (#13679).
     const homeMenu = await page.evaluate(() => !!document.querySelector('[class*="bde-popup-13679-"].breakdance-popup-open'));
     if (homeMenu) return;
-    const diag = await page.evaluate(() => ({
+    const box = await toggle.boundingBox().catch(() => null);
+    const diag = await page.evaluate((b) => ({
+      onTop: b ? (function () { const e = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return e ? (e.tagName + '#' + e.id + '.' + String(e.className).slice(0, 80)) : 'none'; })() : 'no-box',
+      toggleClass: (document.querySelector('header .breakdance-menu-toggle') || {}).className || 'none',
       readyState: document.readyState,
       menuReady: !!window.__CSF_MCS_MOBILE_NAV_PREVIEW__,
       pendingTap: !!window.__CSF_MCS_OPEN_PENDING,
@@ -79,7 +82,7 @@ async function checkMenu(page, problems) {
       menuScript: !!document.getElementById('csf-mcs-mobile-menu-preview-script'),
       overlay: !!document.getElementById('csf-mcs-mobile-overview'),
       breakdanceMenuOpen: !!document.querySelector('.breakdance-menu--open, .breakdance-responsive-menu--open, .breakdance-menu.is-open'),
-    }));
+    }), box);
     problems.push('Hamburger did not open the navy menu [' + Object.entries(diag).map(([k, v]) => k + '=' + v).join(', ') + ']' + (page.__errors && page.__errors.length ? ' JS errors: ' + page.__errors.slice(0, 3).join(' | ') : ''));
     return;
   }
