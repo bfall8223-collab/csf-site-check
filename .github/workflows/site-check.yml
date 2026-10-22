@@ -1,0 +1,39 @@
+name: Site check
+
+on:
+  schedule:
+    - cron: '17 11 * * *'   # every night (about 4am Pacific)
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Optional: check only these URLs (space separated)'
+        required: false
+        default: ''
+      limit:
+        description: 'Optional: check only the first N pages (0 = all)'
+        required: false
+        default: '0'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install playwright@1.48.2
+      - run: npx playwright install --with-deps chromium
+      - name: Run site check
+        env:
+          ONLY: ${{ github.event.inputs.only }}
+          LIMIT: ${{ github.event.inputs.limit }}
+        run: node check.js
+      - name: Save report and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-check-report
+          path: report/
+          retention-days: 14
