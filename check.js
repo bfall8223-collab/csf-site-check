@@ -67,7 +67,22 @@ async function checkMenu(page, problems) {
   if (!managed) return; // page not handled by the Master Parent menu
   await toggle.click({ timeout: 5000 }).catch(() => {});
   const opened = await page.waitForSelector('#csf-mcs-mobile-overview.is-open', { timeout: 6000 }).then(() => true).catch(() => false);
-  if (!opened) { problems.push('Hamburger did not open the navy menu'); return; }
+  if (!opened) {
+    // The home page intentionally opens its own Breakdance overview popup (#13679).
+    const homeMenu = await page.evaluate(() => !!document.querySelector('[class*="bde-popup-13679-"].breakdance-popup-open'));
+    if (homeMenu) return;
+    const diag = await page.evaluate(() => ({
+      readyState: document.readyState,
+      menuReady: !!window.__CSF_MCS_MOBILE_NAV_PREVIEW__,
+      pendingTap: !!window.__CSF_MCS_OPEN_PENDING,
+      earlyScript: !!document.getElementById('csf-mcs-mobile-menu-early-intercept'),
+      menuScript: !!document.getElementById('csf-mcs-mobile-menu-preview-script'),
+      overlay: !!document.getElementById('csf-mcs-mobile-overview'),
+      breakdanceMenuOpen: !!document.querySelector('.breakdance-menu--open, .breakdance-responsive-menu--open, .breakdance-menu.is-open'),
+    }));
+    problems.push('Hamburger did not open the navy menu [' + Object.entries(diag).map(([k, v]) => k + '=' + v).join(', ') + ']' + (page.__errors && page.__errors.length ? ' JS errors: ' + page.__errors.slice(0, 3).join(' | ') : ''));
+    return;
+  }
   const close = page.locator('#csf-mcs-mobile-overview.is-open .csf-mo-close').filter({ visible: true }).first();
   if (await close.count()) {
     await close.click().catch(() => {});
@@ -87,6 +102,9 @@ async function checkUrl(browser, url) {
   // Mobile, as a visitor
   const mctx = await browser.newContext({ ...devices['iPhone 13'] });
   const m = await mctx.newPage();
+  m.__errors = [];
+  m.on('pageerror', e => m.__errors.push(String(e.message).slice(0, 160)));
+  m.on('console', msg => { if (msg.type() === 'error') m.__errors.push(msg.text().slice(0, 160)); });
   try {
     const resp = await m.goto(url + (url.includes('?') ? '&' : '?') + 'csfcheck=' + Date.now(), { waitUntil: 'load', timeout: 45000 });
     const finalUrl = m.url().split('?')[0];
